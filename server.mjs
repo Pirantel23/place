@@ -59,10 +59,13 @@ const wss = new WebSocket.Server({
 
 server.on("upgrade", (req, socket, head) => {
   const url = new URL(req.url, req.headers.origin);
-  console.log(url);
-  wss.handleUpgrade(req, socket, head, (ws) => {
-    wss.emit("connection", ws, req);
-  });
+  if (apiKeys.has(url.searchParams.get('apiKey'))) {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws, req);
+    });
+  } else {
+    socket.destroy();
+  }
 });
 
 function verifyPixel(data){
