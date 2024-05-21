@@ -57,16 +57,17 @@ const wss = new WebSocket.Server({
   noServer: true,
 });
 
-// Create a WeakMap to store ws -> apiKey associations
 const wsApiKeyMap = new WeakMap();
+const wsTimeoutMap = new WeakMap();
 
 server.on("upgrade", (req, socket, head) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const apiKey = url.searchParams.get('apiKey');
   if (apiKeys.has(apiKey)) {
     wss.handleUpgrade(req, socket, head, (ws) => {
-      // Store the apiKey in the WeakMap
       wsApiKeyMap.set(ws, apiKey);
+      const nextTimeout = new Date();
+      wsTimeoutMap.set(ws, nextTimeout);
       wss.emit("connection", ws, req);
     });
   } else {
@@ -79,18 +80,33 @@ function verifyPixel(data){
 }
 
 wss.on('connection', function connection(ws) {
+  const apiKey = wsApiKeyMap.get(ws);
+  let nextTimeout = wsTimeoutMap.get(ws);
+  
+  ws.send(JSON.stringify({'type': 'nextTimeout', 'payload': nextTimeout.toISOString()}));
+
   ws.on('message', function message(data) {
     console.log(`Received message => ${data}`);
     data = JSON.parse(data);
-    if (verifyPixel(data)){
+
+    const now = new Date();
+    nextTimeout = wsTimeoutMap.get(ws);
+
+    if (now >= nextTimeout && verifyPixel(data)) {
       place[data.payload.x + data.payload.y * size] = data.payload.color;
+
+      const delay = 10 + Math.floor(Math.random() * 51);
+      nextTimeout = new Date(now.valueOf() + delay * 1000);
+      wsTimeoutMap.set(ws, nextTimeout);
+
+      wss.clients.forEach(function each(client) {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({'type': 'field', 'payload': place}));
+        }
+      });
     }
 
-    wss.clients.forEach(function each(client) {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({'type': 'field', 'payload': place}));
-      }
-    });
+    ws.send(JSON.stringify({'type': 'nextTimeout', 'payload': nextTimeout.toISOString()}));
   });
 
   ws.send(JSON.stringify({'type': 'field', 'payload': place}));
