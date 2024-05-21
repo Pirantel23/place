@@ -57,10 +57,16 @@ const wss = new WebSocket.Server({
   noServer: true,
 });
 
+// Create a WeakMap to store ws -> apiKey associations
+const wsApiKeyMap = new WeakMap();
+
 server.on("upgrade", (req, socket, head) => {
-  const url = new URL(req.url, req.headers.origin);
-  if (apiKeys.has(url.searchParams.get('apiKey'))) {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const apiKey = url.searchParams.get('apiKey');
+  if (apiKeys.has(apiKey)) {
     wss.handleUpgrade(req, socket, head, (ws) => {
+      // Store the apiKey in the WeakMap
+      wsApiKeyMap.set(ws, apiKey);
       wss.emit("connection", ws, req);
     });
   } else {
@@ -69,7 +75,7 @@ server.on("upgrade", (req, socket, head) => {
 });
 
 function verifyPixel(data){
-  return colors.includes(data.payload.color) && data.payload.x >= 0 && data.payload.x < size && data.payload.y >= 0 && data.payload.y < size
+  return colors.includes(data.payload.color) && data.payload.x >= 0 && data.payload.x < size && data.payload.y >= 0 && data.payload.y < size;
 }
 
 wss.on('connection', function connection(ws) {
