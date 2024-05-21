@@ -13,7 +13,7 @@ const main = apiKey => {
   ws.addEventListener("message", res => drawer.putArray(JSON.parse(res.data).payload));
   timeout.next = new Date();
   drawer.onClick = (x, y) => {
-    drawer.put(x, y, picker.color);
+    ws.send(JSON.stringify({'type': 'update', 'payload': {'x': x, 'y': y, 'color': picker.color}}))
   };
 };
 
