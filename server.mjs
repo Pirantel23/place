@@ -64,3 +64,10 @@ server.on("upgrade", (req, socket, head) => {
     wss.emit("connection", ws, req);
   });
 });
+
+wss.on('connection', function connection(ws) {
+  console.log('new user');
+  ws.on('message', function message(data) {
+    console.log('received: %s', data);
+  });
+});
