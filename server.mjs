@@ -66,7 +66,7 @@ server.on("upgrade", (req, socket, head) => {
 });
 
 function verifyPixel(data){
-  colors.includes(data.payload.color) && data.payload.x >= 0 && data.payload.x < size && data.payload.y >= 0 && data.payload.y < size
+  return colors.includes(data.payload.color) && data.payload.x >= 0 && data.payload.x < size && data.payload.y >= 0 && data.payload.y < size
 }
 
 wss.on('connection', function connection(ws) {
@@ -76,7 +76,7 @@ wss.on('connection', function connection(ws) {
     if (verifyPixel(data)){
       place[data.payload.x + data.payload.y * size] = data.payload.color;
     }
-    
+
     wss.clients.forEach(function each(client) {
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify({'type': 'field', 'payload': place}));
